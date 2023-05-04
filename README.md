@@ -1,7 +1,7 @@
 # PINN4RDE
 
 This is a code repository for "Rotating Disk Electrodes Beyond Levich Approximation: Physics-Informed Neural Networks Reveal and Quantify Edge Effects" submitted to *Analytical Chemistry*. The weights of neural networks are provided to help users reproduce the results. Please note that due to the stochastic nature of neural networks, your own training results may vary slightly.
-
+![Table of Content Figure](TOCFigure.png)
 # Requirements
 Python 3.7 and above is suggested to run the program.The neural networks was developed and tested with Tensorflow 2.3. Common machine learning and datascience package including Numpy, Pandas, sklearn are required. Note that the results will be varied slightly depending of different hardware environment and the initial states of neural networks.
 
