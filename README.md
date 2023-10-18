@@ -26,7 +26,7 @@ There are 6 folders, each serving a different scenario. They are:
 Please report any issues/bugs of the code in the discussion forum of the repository or contact the corresponding author of the paper. 
 
 # Cite 
-To cite, please refer to: (Cite information unavilable yet).
+To cite, please refer to [Anal. Chem. 2023, 95, 34, 12826–12834](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=OWucH-MAAAAJ&citation_for_view=OWucH-MAAAAJ:ufrVoPGSRksC).
 
 
 
