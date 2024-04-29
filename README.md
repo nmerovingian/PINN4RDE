@@ -31,6 +31,9 @@ There are 6 folders, each serving a different scenario. They are:
 * PINN RDE 2D Simulation: Using PINN to simulate 2-D steady state cocnentration profile at RDE. This Scenario is to analyze the edge effect at RDE and a working curve is provided to respond to Newman's guess. 
 * PINN RDE 2D Simulation with Sc Corrections: Schmidt number corrections (in both r and y directions) can even be included for the problem above.
 
+# One Case for RRDE
+* PINN RRDE 2D Simulation: Include the python script to build and train a PINN to solve the convective diffusion problem for RRDE. The weights and data files are too large to be uploaded. Contact the author if you want these information. 
+
 # Issue Reports
 Please report any issues/bugs of the code in the discussion forum of the repository or contact the corresponding author of the paper. 
 
