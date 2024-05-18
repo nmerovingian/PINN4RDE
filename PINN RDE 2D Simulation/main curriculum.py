@@ -40,7 +40,7 @@ else:
 pinn.compile(optimizer='Adam',loss='mse')
 
 default_weight_name = "./weights/default.h5"
-pinn.save_weights(default_weight_name)
+# pinn.save_weights(default_weight_name)
 
 
 X_s = []
