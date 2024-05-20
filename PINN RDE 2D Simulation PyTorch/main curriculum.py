@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 import numpy as np
 import os
 from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
 import torch.nn.functional as F
 import pandas as pd
 from pathlib import Path
@@ -16,18 +17,20 @@ from helper import ConcMontella
 
 
 class RDE2DDataset(Dataset):
-    def __init__(self, num_samples, R0, re, no_flux_bnd):
+    def __init__(self, num_train_samples, R0, re, no_flux_bnd):
         super().__init__()
-        self.num_samples = num_samples
+        self.num_train_samples = num_train_samples
         self.R0 = R0
         self.re = re
         self.no_flux_bnd = no_flux_bnd
 
         # set up the parameters
-        omega = 50 * np.pi * 2  # Rotational frequency
+        freq = 50  # Frequency of disc electrode
+        omega = freq * np.pi * 2  # Rotational frequency
         nu = 1e-6  # Kinematic viscosity, s^-1
         D = 1e-9  # Diffusion coefficient, m^2 s^-1
         Sc = nu/D # Schmidt number
+        Re = re**2*omega/nu  # Reynolds number
         L = 0.51023 * omega**1.5 * nu**(-0.5)
         delta = 1.2865 * (D / L)**(1/3)
         Delta = delta / re
@@ -37,55 +40,67 @@ class RDE2DDataset(Dataset):
         self.L = L
         self.D = D
         self.Sc = Sc
+        self.Re = Re
         self.script_L = L * re**3 / D
         self.maxY = maxY
         self.maxR = maxR
         
-        self.gen_train_data()
+        self.prepare_training_data()
 
-    def gen_train_data(self):
-        # Generate domain samples
-        TYR_dmn0 = np.random.rand(self.num_samples, 3)
+    def prepare_training_data(self):
+        # Solve the domain problem
+        TYR_dmn0 = np.random.rand(self.num_train_samples, 3)
         TYR_dmn0[:, 0] = 0.0
-        TYR_dmn0[:, 1] *= self.maxY
+        TYR_dmn0[:, 1] = TYR_dmn0[:, 1] * self.maxY
         TYR_dmn0[:, 2] = TYR_dmn0[:, 2] * (self.maxR - self.R0) + self.R0
 
-        aux1_dmn0 = np.ones((self.num_samples, 1)) / TYR_dmn0[:, 2:3]
-        aux2_dmn0 = self.script_L * TYR_dmn0[:, 1:2]**2
-        aux3_dmn0 = self.script_L * TYR_dmn0[:, 1:2] * TYR_dmn0[:, 2:3]
+        aux1_dmn0 = np.random.rand(self.num_train_samples, 1)
+        aux1_dmn0[:, 0] = 1.0 / TYR_dmn0[:, 2]
 
-        # Boundary samples
-        TYR_bnd0 = np.zeros_like(TYR_dmn0)
-        TYR_bnd0[:, 2] = np.random.rand(self.num_samples) * (1.0 - self.R0) + self.R0
+        aux2_dmn0 = np.random.rand(self.num_train_samples, 1)  # scriptL * Y **2 
+        aux2_dmn0[:, 0] = self.script_L * TYR_dmn0[:, 1] ** 2
 
-        TYR_bnd1 = np.zeros_like(TYR_dmn0)
-        TYR_bnd1[:, 2] = np.random.rand(self.num_samples) * (self.maxR - 1.0) + 1.0
+        aux3_dmn0 = np.random.rand(self.num_train_samples, 1)  # scriptL * R * Y
+        aux3_dmn0[:, 0] = self.script_L * TYR_dmn0[:, 2] * TYR_dmn0[:, 1]
 
-        TYR_bnd2 = np.zeros_like(TYR_dmn0)
-        TYR_bnd2[:, 1] = np.random.rand(self.num_samples) * self.maxY
+        TYR_bnd0 = np.random.rand(self.num_train_samples, 3)
+        TYR_bnd0[:, 0] = 0.0
+        TYR_bnd0[:, 1] = 0.0
+        TYR_bnd0[:, 2] = TYR_bnd0[:, 2] * (1.0 - self.R0) + self.R0
+
+        TYR_bnd1 = np.random.rand(self.num_train_samples, 3)
+        TYR_bnd1[:, 0] = 0.0
+        TYR_bnd1[:, 1] = 0.0
+        TYR_bnd1[:, 2] = TYR_bnd1[:, 2] * (self.maxR - 1.0) + 1.0
+
+        TYR_bnd2 = np.random.rand(self.num_train_samples, 3)
+        TYR_bnd2[:, 0] = 0.0
+        TYR_bnd2[:, 1] = TYR_bnd2[:, 1] * self.maxY
         TYR_bnd2[:, 2] = self.maxR
 
-        TYR_bnd3 = np.zeros_like(TYR_dmn0)
+        TYR_bnd3 = np.random.rand(self.num_train_samples, 3)
+        TYR_bnd3[:, 0] = 0.0
         TYR_bnd3[:, 1] = self.maxY
-        TYR_bnd3[:, 2] = np.random.rand(self.num_samples) * (self.maxR - self.R0) + self.R0
+        TYR_bnd3[:, 2] = (self.maxR - self.R0) * TYR_bnd3[:, 2] + self.R0
 
-        TYR_bnd4 = np.zeros_like(TYR_dmn0)
-        TYR_bnd4[:, 1] = np.random.rand(self.num_samples) * self.maxY
+        TYR_bnd4 = np.random.rand(self.num_train_samples, 3)
+        TYR_bnd4[:, 0] = 0.0
+        TYR_bnd4[:, 1] = TYR_bnd4[:, 1] * self.maxY
         TYR_bnd4[:, 2] = self.R0
 
-        # Concentrations
-        C_dmn0 = np.zeros((self.num_samples, 1))
-        C_bnd0 = np.zeros_like(C_dmn0)
-        C_bnd1 = np.zeros_like(C_dmn0)
-        C_bnd2 = np.ones_like(C_dmn0)
-        C_bnd3 = np.ones_like(C_dmn0)
-        C_bnd4 = np.zeros_like(C_dmn0) if self.no_flux_bnd else ConcMontella((self.L / self.D) ** (1 / 3) * TYR_bnd4[:, 1] * self.re)
+        C_dmn0 = np.zeros((self.num_train_samples, 1))
+        C_bnd0 = np.zeros((self.num_train_samples, 1))
+        C_bnd1 = np.zeros((self.num_train_samples, 1))
+        C_bnd2 = np.ones((self.num_train_samples, 1))
+        C_bnd3 = np.ones((self.num_train_samples, 1))
+        if self.no_flux_bnd:
+            C_bnd4 = np.zeros((self.num_train_samples, 1))
+        else:
+            C_bnd4 = ConcMontella((self.L / self.D) ** (1 / 3) * TYR_bnd4[:, 1] * self.re)
+            C_bnd4 = C_bnd4.reshape(-1, 1)
 
         self.inputs = [TYR_dmn0, aux1_dmn0, aux2_dmn0, aux3_dmn0, TYR_bnd0, TYR_bnd1, TYR_bnd2, TYR_bnd3, TYR_bnd4]
         self.outputs = [C_dmn0, C_bnd0, C_bnd1, C_bnd2, C_bnd3, C_bnd4]
-    
-    def gen_test_data(self):
-        pass
     
     def __len__(self):
         return len(self.inputs[0])
@@ -96,7 +111,7 @@ class RDE2DDataset(Dataset):
         return input_data, output_data
     
 
-def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, re, FluxConvertToHale,
+def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, Re, FluxConvertToHale,
             num_test_samples, device):
     """
     Test the network to plot concentration profiles and calculate flux densities at a specified time step.
@@ -112,6 +127,7 @@ def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, re, FluxCo
     network.eval()
     network = network.to(device)
     time_sects = [0.0]
+    
     
     # results
     X_s = []
@@ -145,11 +161,15 @@ def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, re, FluxCo
         cbar.set_label('C(Y,R)')
         cbar.mappable.set_clim(0, 1)
         ax.set_ylim(-maxY * 0.05, maxY)
+        ax.add_patch(Rectangle((R0,-maxY*0.05),(1.0-R0),maxY*0.05,edgecolor='k',facecolor='r'))
+        ax.add_patch(Rectangle((1.0,-maxY*0.05),(maxR-1.0),maxY*0.05,edgecolor='k',facecolor='k'))
         ax.set_xlabel('R', fontsize='large', fontweight='bold')
         ax.set_ylabel('Y', fontsize='large', fontweight='bold')
-        ax.set_title(r'$Sc^{\frac{1}{3}}re^{\frac{1}{2}}$' + f'={Sc**(1/3)*re**(1/2):.5f}')
+        ax.set_title(r'$Sc^{\frac{1}{3}}Re^{\frac{1}{2}}$' + f'={Sc**(1/3)*Re**(1/2):.5f}')
 
         # Calculate flux density
+        R_flat = np.linspace(R0, maxR,num=500)
+        R_i = R_flat[1] - R_flat[0]
         TYR_flux = torch.zeros((len(R_flat), 3), dtype=torch.float32, device=device)
         TYR_flux[..., 2] = torch.tensor(R_flat, dtype=torch.float32, device=device)
         TYR_flux.requires_grad_(True)
@@ -157,14 +177,16 @@ def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, re, FluxCo
             C = network(TYR_flux)
             gradients = torch.autograd.grad(outputs=C, inputs=TYR_flux, grad_outputs=torch.ones_like(C), create_graph=True)[0]
         Flux_density = gradients[..., 1].detach().cpu().numpy()
+        
         J_ss =  sum(Flux_density*R_i)
         # Convert to the flux using W coordinates
         J_ss = J_ss * FluxConvertToHale + R0
+
         C = C.detach().cpu().numpy().flatten()
         # Plotting flux density
         ax = axes[1]
         ax.plot(R_flat, Flux_density)
-        ax.set_title(f'J={np.sum(Flux_density * (R_flat[1] - R_flat[0])) * FluxConvertToHale:.4f}')
+        ax.set_title(f'J={J_ss:.4f}')
         ax.set_ylabel('Flux Density', fontsize='large')
         ax.set_xlabel('R-axis', fontsize='large')
 
@@ -174,7 +196,7 @@ def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, re, FluxCo
 
         plt.close(fig)  # Close the figure to free memory
 
-        X_s.append(Sc**(1/3)*re**(1/2))
+        X_s.append(Sc**(1/3)*Re**(1/2))
         J_sses.append(J_ss)
         R0_s.append(R0)
 
@@ -230,12 +252,12 @@ def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
                 inputs = [inp.to(device) for inp in inputs]
                 outputs = [out.to(device) for out in outputs]
 
+                optimizer.zero_grad()
                 preds = pinn(inputs)
                 mse_losses = [F.mse_loss(pred, target) for pred, target in zip(preds, outputs)]
                 loss = torch.stack(mse_losses).sum()
                 losses.append(loss.item())
 
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
@@ -250,18 +272,27 @@ def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
         torch.save(pinn.state_dict(), weights_path)
         return weights_path
     else:  # eval loop
-        pinn.load_state_dict(torch.load(weights_path)) # network load weights at the same time
+        # load weights
+        pinn.load_state_dict(torch.load(weights_path)) 
         pinn.eval()
 
+        L = train_dataset.L
+        D = train_dataset.D
+        Sc = train_dataset.Sc
+        Re = train_dataset.Re
+
+        FluxConvertToHale = np.sqrt(1.65894)/(((L/D)**(1/3))*re)
+
         # results
-        X_s, J_sses, R0_s = test_fn(network, R0, maxR, maxY, saving_directory, file_name,
-                                Sc=train_dataset.Sc, re=re, FluxConvertToHale=1, 
-                                num_test_samples=num_test_samples, device=device)
+        X_s, J_sses, R0_s = test_fn(network, R0=R0, maxR=maxR, maxY=maxY, saving_directory=saving_directory,
+                                    file_name=file_name, Sc=Sc, Re=Re, FluxConvertToHale=FluxConvertToHale, 
+                                    num_test_samples=num_test_samples, device=device)
         return X_s, J_sses, R0_s
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu"
 
     maxT = 0.0 # maxT is zero as we want to solve a steady state problem independent of time
     epochs = 150
@@ -275,9 +306,9 @@ if __name__ == "__main__":
             for re in np.arange(7e-6, 4.3e-5, step=2e-6):
                 if train:
                     weights_path = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=True, no_flux_bnd=no_flux_bnd,
-                                              weights_path=weights_path, saving_directory=saving_directory)
+                                              weights_path=weights_path, saving_directory=saving_directory, device=device)
                 else:
                     X_s, J_sses, R0_s = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=False, no_flux_bnd=no_flux_bnd,
-                                                   weights_path=weights_path,saving_directory=saving_directory)
+                                                   weights_path=weights_path,saving_directory=saving_directory, device=device)
                     df = pd.DataFrame({'X':X_s,"J_ss":J_sses,'R0':R0_s})
                     df.to_csv(f'{saving_directory}/results.csv',index=False)

@@ -49,20 +49,30 @@ class ResidualUnit(nn.Module):
 class Network(nn.Module):
     def __init__(self, num_inputs=3, layers=[64, 32, 32, 32, 64], activation='tanh', num_outputs=1):
         super(Network, self).__init__()
+
+        # Create a list to store layers
         modules = []
         previous_units = num_inputs
+        self.activation = activation  # Store the activation function type
 
+        # Add hidden layers
         for units in layers:
             modules.append(nn.Linear(previous_units, units))
             if activation == 'tanh':
                 modules.append(nn.Tanh())
+            elif activation == 'relu':
+                modules.append(nn.ReLU())
             else:
-                modules.append(nn.ReLU())  # Placeholder for other activations
+                raise ValueError(f"Unsupported activation function: {activation}")
             previous_units = units
 
+        # Add output layer
         modules.append(nn.Linear(layers[-1], num_outputs))
+
+        # Combine all layers into a Sequential module
         self.layers = nn.Sequential(*modules)
 
+        # Initialize weights
         self.initialize_weights()
 
     def forward(self, x):
@@ -71,5 +81,10 @@ class Network(nn.Module):
     def initialize_weights(self):
         for layer in self.layers:
             if isinstance(layer, nn.Linear):
-                nn.init.kaiming_normal_(layer.weight)
+                if self.activation == 'relu':
+                    nn.init.kaiming_normal_(layer.weight, nonlinearity='relu')
+                elif self.activation == 'tanh':
+                    nn.init.xavier_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
 
