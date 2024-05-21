@@ -36,12 +36,13 @@ class RDE2DDataset(Dataset):
         Delta = delta / re
         maxY = Delta * 4
         maxR = max(4, 1 + Delta * 4)
+        script_L = L * re**3 / D
 
         self.L = L
         self.D = D
         self.Sc = Sc
         self.Re = Re
-        self.script_L = L * re**3 / D
+        self.script_L = script_L
         self.maxY = maxY
         self.maxR = maxR
         
@@ -204,7 +205,7 @@ def test_fn(network, R0, maxR, maxY, saving_directory, file_name, Sc, Re, FluxCo
 
 
 def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
-               weights_path=None, train=True, saving_directory="./Data", alpha=1.0,
+               weights_path=None, train=True, saving_directory="./Data", alpha=0.98,
                no_flux_bnd=False, device='cuda'):
     
     Path(saving_directory).mkdir(parents=True, exist_ok=True)
@@ -234,7 +235,14 @@ def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
     pinn = pinn.to(device)
     
     optimizer = optim.Adam(pinn.parameters(), lr=1e-3)  # In tensorflow, the default lr of Adam optimizer is 1e-3
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: alpha if epoch > 50 else 1)
+    
+    # set scheduler
+    def lr_lambda(epoch):
+        if epoch <= 50:
+            return 1
+        else:
+            return alpha ** (epoch - 50)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
 
@@ -245,9 +253,8 @@ def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
     if train:
         pinn.train()
         for i_epoch in range(epochs):
-            pbar = tqdm(train_loader, desc="Training")
+            pbar = tqdm(train_loader, desc=f"Epoch {i_epoch+1}/{epochs}")
             losses = []
-            # training loop
             for inputs, outputs in train_loader:
                 inputs = [inp.to(device) for inp in inputs]
                 outputs = [out.to(device) for out in outputs]
@@ -260,13 +267,14 @@ def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
 
                 loss.backward()
                 optimizer.step()
+                lr = optimizer.param_groups[0]['lr']
 
-                pbar.set_postfix({'Loss': loss.item()}) # same with tf.fit(verbose=2)
+                pbar.set_postfix({'Loss': loss.item(), 'lr': lr})
                 pbar.update()
 
             mean_loss = np.mean(losses)
             scheduler.step()
-            print(f'Epoch {i_epoch}, Loss: {mean_loss}') # same with tf.fit(verbose=2)
+            print(f'Epoch {i_epoch+1}/{epochs}, Loss: {mean_loss:.6f}, lr: {lr}')
             pbar.close()
 
         torch.save(pinn.state_dict(), weights_path)
@@ -291,13 +299,13 @@ def prediction(epochs=50, maxT=0, R0=0.5, re=1e-5, num_train_samples=int(2e6),
 
 
 if __name__ == "__main__":
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = "cpu"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = "cpu"
 
     maxT = 0.0 # maxT is zero as we want to solve a steady state problem independent of time
     epochs = 150
     no_flux_bnd = False
-    train = True
+    train = False
 
     saving_directory = f'Data No Flux = {no_flux_bnd}'
     weights_path = None

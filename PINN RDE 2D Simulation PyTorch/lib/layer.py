@@ -13,8 +13,8 @@ class GradientLayer(nn.Module):
         c = self.model(x)
 
         # Compute first order derivatives
-        gradients = autograd.grad(c, x, grad_outputs=torch.ones_like(c), create_graph=True)[0]
-        dc_dt, dc_dx, dc_dy = gradients[:, 0], gradients[:, 1], gradients[:, 2]
+        dc_dtxy = autograd.grad(c, x, grad_outputs=torch.ones_like(c), create_graph=True)[0]
+        dc_dt, dc_dx, dc_dy = dc_dtxy[:, 0], dc_dtxy[:, 1], dc_dtxy[:, 2]
 
         # Compute second order derivatives
         d2c_dx2 = autograd.grad(dc_dx, x, grad_outputs=torch.ones_like(dc_dx), create_graph=True)[0][:, 1]
@@ -32,6 +32,6 @@ class BoundaryGradientLayer(nn.Module):
         x.requires_grad_(True)
         c = self.model(x)
 
-        gradients = torch.autograd.grad(c, x, grad_outputs=torch.ones_like(c), create_graph=True)[0]
-        dc_dt, dc_dx, dc_dy = gradients[:, 0], gradients[:, 1], gradients[:, 2]
+        dc_dtxy = torch.autograd.grad(c, x, grad_outputs=torch.ones_like(c), create_graph=True)[0]
+        dc_dt, dc_dx, dc_dy = dc_dtxy[:, 0], dc_dtxy[:, 1], dc_dtxy[:, 2]
         return c, dc_dt, dc_dx, dc_dy

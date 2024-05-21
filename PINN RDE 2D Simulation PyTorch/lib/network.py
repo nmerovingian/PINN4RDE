@@ -81,10 +81,7 @@ class Network(nn.Module):
     def initialize_weights(self):
         for layer in self.layers:
             if isinstance(layer, nn.Linear):
-                if self.activation == 'relu':
-                    nn.init.kaiming_normal_(layer.weight, nonlinearity='relu')
-                elif self.activation == 'tanh':
-                    nn.init.xavier_normal_(layer.weight)
+                nn.init.kaiming_normal_(layer.weight, nonlinearity='relu')
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
