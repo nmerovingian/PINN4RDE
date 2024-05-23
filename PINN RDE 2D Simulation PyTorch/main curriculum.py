@@ -318,11 +318,11 @@ if __name__ == "__main__":
                     prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=True, no_flux_bnd=no_flux_bnd,
                                               weights_path=weights_path, saving_directory=saving_directory, device=device)
                 else:
-                    X, J_ss, R0 = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=False, no_flux_bnd=no_flux_bnd,
+                    X, J_ss, R0_ = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=False, no_flux_bnd=no_flux_bnd,
                                                    weights_path=weights_path,saving_directory=saving_directory, device=device)
                     X_s.extend(X)
                     J_sses.extend(J_ss)
-                    R0_s.extend(R0)
+                    R0_s.extend(R0_)
     if not train:
         df = pd.DataFrame({'X':X_s,"J_ss":J_sses,'R0':R0_s})
         df.to_csv(f'{saving_directory}/results.csv',index=False)
