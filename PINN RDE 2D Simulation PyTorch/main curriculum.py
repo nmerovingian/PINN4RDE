@@ -309,14 +309,20 @@ if __name__ == "__main__":
 
     saving_directory = f'Data No Flux = {no_flux_bnd}'
     weights_path = None
+    X_s, J_sses, R0_s = [], [], []
+
     for R0 in [0.05]:
         for num_train_samples in [3e6]:
             for re in np.arange(7e-6, 4.3e-5, step=2e-6):
                 if train:
-                    weights_path = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=True, no_flux_bnd=no_flux_bnd,
+                    prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=True, no_flux_bnd=no_flux_bnd,
                                               weights_path=weights_path, saving_directory=saving_directory, device=device)
                 else:
-                    X_s, J_sses, R0_s = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=False, no_flux_bnd=no_flux_bnd,
+                    X, J_ss, R0_ = prediction(epochs=epochs, R0=R0, re=re, alpha=0.98, num_train_samples=num_train_samples, train=False, no_flux_bnd=no_flux_bnd,
                                                    weights_path=weights_path,saving_directory=saving_directory, device=device)
-                    df = pd.DataFrame({'X':X_s,"J_ss":J_sses,'R0':R0_s})
-                    df.to_csv(f'{saving_directory}/results.csv',index=False)
+                    X_s.extend(X)
+                    J_sses.extend(J_ss)
+                    R0_s.extend(R0_)
+    if not train:
+        df = pd.DataFrame({'X':X_s,"J_ss":J_sses,'R0':R0_s})
+        df.to_csv(f'{saving_directory}/results.csv',index=False)
