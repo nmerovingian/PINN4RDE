@@ -1,6 +1,6 @@
 # PINN4RDE
 
-This is the code repository for "Rotating Disk Electrodes Beyond Levich Approximation: Physics-Informed Neural Networks Reveal and Quantify Edge Effects" submitted to *Analytical Chemistry* and "Removing 65 Years of Approximation in Rotating Ring Disk Electrode Theory with Physics-Informed Neural Networks" submitted to*The Journal of Physical Chemistry Letters*. 
+This is the code repository for "Rotating Disk Electrodes Beyond Levich Approximation: Physics-Informed Neural Networks Reveal and Quantify Edge Effects" submitted to *Analytical Chemistry* and "Removing 65 Years of Approximation in Rotating Ring Disk Electrode Theory with Physics-Informed Neural Networks" acccepted*The Journal of Physical Chemistry Letters*. 
 
 In simple, this repository shows Physics-Informed Neural Network (PINN) solution to the convective-diffusion problem of Rotating Ring Electrode (RDE) and Rotating Ring Disk Electrode (RRDE).
 
@@ -38,7 +38,8 @@ There are 6 folders, each serving a different scenario. They are:
 Please report any issues/bugs of the code in the discussion forum of the repository or contact the corresponding author of the paper. 
 
 # Cite 
-To cite, please refer to [Anal. Chem. 2023, 95, 34, 12826–12834](https://doi.org/10.1021/acs.analchem.3c01936)
+To cite, please refer to [Anal. Chem. 2023, 95, 34, 12826–12834](https://doi.org/10.1021/acs.analchem.3c01936) for RDE and [J. Phys. Chem. Lett. 2024, 15, 24, 6315–6324](https://pubs.acs.org/doi/full/10.1021/acs.jpclett.4c01258) for RRDE.
+
 
 
 
